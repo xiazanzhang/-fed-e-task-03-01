@@ -3,7 +3,12 @@ let _Vue = null
 export default class VueRouter {
   constructor(options) {
     this.options = options
+    this.mode = options.mode || 'hash'
     this.routeMap = {}
+    if (this.mode === 'hash') {
+      window.location.hash = '/'
+    }
+    //响应式对象
     this.data = _Vue.observable({
       current: '/'
     })
@@ -39,9 +44,12 @@ export default class VueRouter {
     this.options.routes.forEach(route => {
       this.routeMap[route.path] = route.component
     })
+
+    console.log(this.routeMap)
   }
 
   initComponent(Vue) {
+    const self = this
     Vue.component("router-link", {
       props: {
         to: String
@@ -58,14 +66,18 @@ export default class VueRouter {
       },
       methods: {
         clickhander(e) {
-          history.pushState({}, "", this.to)
+          if (self.mode === 'hash') {
+            window.location.hash = `#${this.to}`
+          } else {
+            history.pushState({}, "", this.to)
+          }
           this.$router.data.current = this.to
+          //阻止a标签的默认行为
           e.preventDefault()
         }
       }
       // template:"<a :href='to'><slot></slot><>"
     })
-    const self = this
     Vue.component("router-view", {
       render(h) {
         // self.data.current
@@ -73,12 +85,17 @@ export default class VueRouter {
         return h(cm)
       }
     })
-
   }
+
   initEvent() {
-    //
-    window.addEventListener("popstate", () => {
-      this.data.current = window.location.pathname
-    })
+    if (this.mode === 'hash') {
+      window.addEventListener("hashchange", () => {
+        this.data.current = location.hash.substr(1)
+      })
+    } else {
+      window.addEventListener("popstate", () => {
+        this.data.current = window.location.pathname
+      })
+    }
   }
 }
